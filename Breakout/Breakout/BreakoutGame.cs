@@ -14,12 +14,12 @@ namespace Breakout
     /// <summary>
     /// This is the main type for your game
     /// </summary>
-    public class Breakout : Microsoft.Xna.Framework.Game
+    public class BreakoutGame : Microsoft.Xna.Framework.Game
     {
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
 
-        public Breakout()
+        public BreakoutGame()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
