@@ -3,25 +3,29 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
-using System.Diagnostics;
-
-namespace Breakout {
     /// <summary>
     /// This is main class encapsulating the game logic
     /// for the Breakout game.
     /// </summary>
+using Microsoft.Xna.Framework.Input;
+using System.Diagnostics;
+
+namespace Breakout {
     public class Breakout {
         private SpriteBatch spriteBatch;
         private Paddle paddle;
         private Ball ball;
         private Wall wall;
+        private int screenHeight;
+        private int screenWidth;
 
         public Breakout(SpriteBatch spriteBatch) {
             this.spriteBatch = spriteBatch;
-            this.ball = new Ball(spriteBatch);
-            this.paddle = new Paddle(spriteBatch);
-            this.wall = new Wall(spriteBatch);
+            this.screenWidth = spriteBatch.GraphicsDevice.Viewport.Width;
+            this.screenHeight = spriteBatch.GraphicsDevice.Viewport.Height;
+            this.ball = new Ball();
+            this.paddle = new Paddle(screenWidth, screenHeight);
+            this.wall = new Wall();
         }
 
         /// <summary>
@@ -36,9 +40,9 @@ namespace Breakout {
 
         internal void Draw(GameTime gameTime) {
             spriteBatch.Begin();
-            ball.Draw(gameTime);
-            paddle.Draw(gameTime);
-            wall.Draw(gameTime);
+            ball.Draw(gameTime, spriteBatch);
+            paddle.Draw(gameTime, spriteBatch);
+            wall.Draw(gameTime, spriteBatch);
             spriteBatch.End();
         }
 
@@ -51,17 +55,14 @@ namespace Breakout {
     /// Defines the ball used in a breakout game.
     /// </summary>
     class Ball {
-        private SpriteBatch spriteBatch;
-
-        public Ball(SpriteBatch spriteBatch) {
-            this.spriteBatch = spriteBatch;
+        public Ball() {
         }
 
         internal void LoadContent(ContentManager contentManager) {
             //throw new NotImplementedException();
         }
 
-        internal void Draw(GameTime gameTime) {
+        internal void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
             //throw new NotImplementedException();
         }
     }
@@ -94,7 +95,6 @@ namespace Breakout {
         // The part of the sprite we should draw
         private Rectangle source;
 
-        private SpriteBatch spriteBatch;
         private int screenHeight;
         private int screenWidth;
         private KeyboardState previousKeyboard;
@@ -115,11 +115,10 @@ namespace Breakout {
         /// Creates a new Paddle instance.
         /// </summary>
         /// <param name="spriteBatch">The sprite batch used to draw the paddle.</param>
-        public Paddle(SpriteBatch spriteBatch) {
+        public Paddle(int screenWidth, int screenHeight) {
+            this.screenWidth = screenWidth;
+            this.screenHeight = screenHeight; 
             this.previousKeyboard = Keyboard.GetState();
-            this.spriteBatch = spriteBatch;
-            this.screenWidth = spriteBatch.GraphicsDevice.Viewport.Width;
-            this.screenHeight = spriteBatch.GraphicsDevice.Viewport.Height;
         }
 
         /// <summary>
@@ -130,8 +129,9 @@ namespace Breakout {
             sprite = contentManager.Load<Texture2D>("paddle");
 
             // The initial position is centered on the X axis and PADDLE_OFFSET from the screen bottom
-            position = new Vector2(screenWidth - (screenWidth / 2) - (sprite.Width / 2),
-                                   screenHeight - PADDLE_OFFSET - PADDLE_HEIGHT);
+            int x = screenWidth - (screenWidth / 2) - (sprite.Width / 2);
+            int y = screenHeight - PADDLE_OFFSET - PADDLE_HEIGHT;
+            position = new Vector2(x, y);
             minPosition = new Vector2(0, position.Y);
             maxPosition = new Vector2(screenWidth - 1 - sprite.Width, position.Y);
             // The paddle texture is a sheet containing two textures, start with the first.
@@ -152,7 +152,7 @@ namespace Breakout {
             } else if (keyboard.IsKeyDown(Keys.Right) && !previousKeyboard.IsKeyDown(Keys.Right)) {
                 velocity = new Vector2(INITIAL_SPEED, 0);
             } else if (keyboard.IsKeyDown(Keys.Left) && previousKeyboard.IsKeyDown(Keys.Left)) {
-                velocity = velocity - (ACCELERATION * time);
+                velocity = velocity + (-ACCELERATION * time);
             } else if (keyboard.IsKeyDown(Keys.Right) && previousKeyboard.IsKeyDown(Keys.Right)) {
                 velocity = velocity + (ACCELERATION * time);
             } else {
@@ -169,7 +169,7 @@ namespace Breakout {
         /// Just draws the paddle at the position.
         /// </summary>
         /// <param name="gameTime"></param>
-        internal void Draw(GameTime gameTime) {
+        internal void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
             spriteBatch.Draw(sprite, position, source, Color.White);
         }
     }
@@ -178,17 +178,15 @@ namespace Breakout {
     /// Defines the wall of bricks in a breakout game.
     /// </summary>
     class Wall {
-        private SpriteBatch spriteBatch;
 
-        public Wall(SpriteBatch spriteBatch) {
-            this.spriteBatch = spriteBatch;
+        public Wall() {
         }
 
         internal void LoadContent(ContentManager contentManager) {
            // throw new NotImplementedException();
         }
 
-        internal void Draw(GameTime gameTime) {
+        internal void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
             //throw new NotImplementedException();
         }
     }
