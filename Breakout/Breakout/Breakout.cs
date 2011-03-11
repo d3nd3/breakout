@@ -141,9 +141,9 @@ namespace Breakout {
                     direction.Y = -direction.Y;
                     position.Y = paddle.Bounds.Y - sprite.Height;
 
-                    // figure out the new X direction based on distance from the paddle center
-                    direction.X = (position.X - paddle.Center.X) / (paddle.Bounds.Width / 2);
-                    direction = Vector2.Normalize(direction);
+                // figure out the new X direction based on distance from the paddle center
+                direction.X = ((float)Bounds.Center.X - paddle.Bounds.Center.X) / (paddle.Bounds.Width / 2);
+                direction = Vector2.Normalize(direction);
 
                     // Add a bit to the speed
                     speed += speedIncrement;
