@@ -52,24 +52,44 @@ namespace Breakout {
         }
     }
 
-   
-
     /// <summary
     /// Defines the ball used in a breakout game.
     /// </summary>
     class Ball {
+        /// <summary>
+        /// The state of the ball
+        /// </summary>
         enum State {
-            Active, Dead
+            /// <summary>
+            /// Active, in the sense that the ball is moving on the board
+            /// </summary>
+            Active,
+            /// <summary>
+            /// Dead, in the sense that it has gone off the bottom of the screen
+            /// </summary>
+            Dead
         }
 
+        // The current state of the ball
         private State state;
+
+        // A reference to the paddle. This is used
+        // to detect hits and determine the new direction
         private Paddle paddle;
+
+        // The screen width and height
         private int screenWidth, screenHeight;
+
+        // The sprite we are drawing for the ball
         private Texture2D sprite;
         
+        // The starting position of the ball
         private Vector2 initialPosition;
+
+        // The current position of the ball
         private Vector2 position;
 
+        // The starting direction of the ball, just straight down for now
         private Vector2 initialDirection = new Vector2(0, 1);
         // A unit vector for the direction of the ball
         private Vector2 direction = new Vector2(0, 1);
@@ -77,13 +97,23 @@ namespace Breakout {
         // in pixels per second
         private const int initialSpeed = 150;
         private const int speedIncrement = 75;
-        private const int maxSpeed = 1000;
+        private const int maxSpeed = 750;
         private int speed = initialSpeed;
 
+        /// <summary>
+        /// The bounding rectangle of the ball
+        /// </summary>
         public Rectangle Bounds {
             get { return new Rectangle((int)position.X, (int)position.Y, sprite.Width, sprite.Height); }
         }
 
+        /// <summary>
+        /// Creates a new ball. The breakout game should only need once of these,
+        /// unless I make it so more than one ball is active at a time.
+        /// </summary>
+        /// <param name="paddle">The Paddle which will hit the ball</param>
+        /// <param name="screenWidth">Width of the screen for bounds checking.</param>
+        /// <param name="screenHeight">Height of the screen for bounds checking.</param>
         public Ball(Paddle paddle, int screenWidth, int screenHeight) {
             this.state = State.Active;
             this.paddle = paddle;
@@ -92,19 +122,39 @@ namespace Breakout {
             initialPosition = new Vector2(screenWidth / 2, screenHeight / 2);
         }
 
+        /// <summary>
+        /// Load the sprite for the ball.
+        /// </summary>
+        /// <param name="contentManager"></param>
         internal void LoadContent(ContentManager contentManager) {
             sprite = contentManager.Load<Texture2D>("ball");
             position = initialPosition - new Vector2(sprite.Width / 2, sprite.Height / 2);
         }
 
+        /// <summary>
+        /// Update the state of the ball. 
+        /// 
+        /// If the ball is active it is moved, otherwise
+        /// we check if the ball is being launched.
+        /// </summary>
+        /// <param name="gameTime"></param>
         internal void Update(GameTime gameTime) {
             if (state == State.Active) {
                 UpdatePosition(gameTime);
+
+                if (position.Y > screenHeight) {
+                    state = State.Dead;
+                } else {
+                    HandleCollisions();
+                }
             } else if (state == State.Dead && Keyboard.GetState().IsKeyDown(Keys.Space)) {
                 LaunchBall();
             }
         }
 
+        /// <summary>
+        /// Launch the ball by setting it's initial state.
+        /// </summary>
         private void LaunchBall() {
             state = State.Active;
             speed = initialSpeed;
@@ -114,15 +164,14 @@ namespace Breakout {
 
         private void UpdatePosition(GameTime gameTime) {
             position = position + direction * (float)(speed * gameTime.ElapsedGameTime.TotalSeconds);
-
-            if (position.Y > screenHeight) {
-                state = State.Dead;
-            } else {
-                DetectCollisions();
-            }
         }
 
-        private void DetectCollisions() {
+        private void HandleCollisions() {
+            HandleBoardCollisions();
+            HandlePaddleCollision();
+        }
+
+        private void HandleBoardCollisions() {
             if (position.Y < 0) {
                 position.Y = 0;
                 direction.Y = -direction.Y;
@@ -135,20 +184,20 @@ namespace Breakout {
                 position.X = screenWidth - sprite.Height;
                 direction.X = -direction.X;
             }
+        }
 
-            if (direction.Y > 0) {
-                if (paddle.Bounds.Intersects(this.Bounds)) {
-                    direction.Y = -direction.Y;
-                    position.Y = paddle.Bounds.Y - sprite.Height;
+        private void HandlePaddleCollision() {
+            if (direction.Y > 0 && paddle.Bounds.Intersects(this.Bounds)) {
+                direction.Y = -direction.Y;
+                position.Y = paddle.Bounds.Y - sprite.Height;
 
                 // figure out the new X direction based on distance from the paddle center
                 direction.X = ((float)Bounds.Center.X - paddle.Bounds.Center.X) / (paddle.Bounds.Width / 2);
                 direction = Vector2.Normalize(direction);
 
-                    // Add a bit to the speed
-                    speed += speedIncrement;
-                    speed = Math.Min(speed, maxSpeed);
-                }
+                // Increase the speed when the ball is hit
+                speed += speedIncrement;
+                speed = Math.Min(speed, maxSpeed);
             }
         }
 
@@ -201,10 +250,6 @@ namespace Breakout {
 
         public Rectangle Bounds {
             get { return new Rectangle((int)position.X, (int)position.Y, sprite.Width, PADDLE_HEIGHT); }
-        }
-
-        public Point Center {
-            get { return new Point((int)position.X + sprite.Width / 2, (int)position.Y + sprite.Height / 2); }
         }
 
         /// <summary>
