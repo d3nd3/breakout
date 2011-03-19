@@ -25,7 +25,7 @@ namespace Breakout {
             this.screenHeight = spriteBatch.GraphicsDevice.Viewport.Height;
             this.paddle = new Paddle(screenWidth, screenHeight);
             this.ball = new Ball(paddle, screenWidth, screenHeight);
-            this.wall = new Wall();
+            this.wall = new Wall(screenWidth, screenHeight);
         }
 
         /// <summary>
@@ -319,16 +319,79 @@ namespace Breakout {
     /// Defines the wall of bricks in a breakout game.
     /// </summary>
     class Wall {
+        private const int bricksPerRow = 20;
+        private const double wallHeightRatio = 0.20;
+        private const int numRows = 7;
+        private static readonly Color[] colors = {
+            Color.Red, Color.Orange, Color.Yellow, Color.Green, 
+            Color.Blue, Color.Indigo, Color.Violet
+        };
 
-        public Wall() {
+        private readonly int screenWidth;
+        private readonly int screenHeight;
+        private float brickHeight;
+        private float brickWidth;
+        private Rectangle wallBounds;
+        private Texture2D sprite;
+        private List<Brick> bricks = new List<Brick>();
+        
+        public Wall(int screenWidth, int screenHeight) {
+            this.screenWidth = screenWidth;
+            this.screenHeight = screenHeight;
+
+            double wallHeight = screenHeight * wallHeightRatio;
+            wallBounds = new Rectangle(0, (int)(wallHeight / 2),
+                        screenWidth, (int)(wallHeight + wallHeight / 2));
+            brickHeight = wallBounds.Height / numRows;
+            brickWidth = screenWidth / bricksPerRow;
+            
         }
 
         internal void LoadContent(ContentManager contentManager) {
-            // throw new NotImplementedException();
+            sprite = contentManager.Load<Texture2D>("brick");
+            InitialiseBricks();
+        }
+
+        private void InitialiseBricks() {
+            for (int i = 0; i < numRows * bricksPerRow; i++) {
+                int row = i / bricksPerRow;
+                int column = i % bricksPerRow;
+                bricks.Add(new Brick(
+                        row, column,
+                        column * brickWidth, 
+                        wallBounds.Top + (row * brickHeight), 
+                        brickWidth, 
+                        brickHeight));
+            }
         }
 
         internal void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
-            //throw new NotImplementedException();
+            foreach (Brick brick in bricks) {
+                spriteBatch.Draw(sprite, brick.Bounds, colors[colors.Length - brick.Row - 1]);
+            }
+        }
+    }
+
+    class Brick {
+        enum State { ALIVE, BROKEN };
+        private readonly int column;
+        private readonly int row;
+        private Rectangle bounds;
+        private State state;
+
+        public int Row {
+            get { return row; }
+        }
+
+        public Rectangle Bounds {
+            get { return bounds; }
+        }
+
+        public Brick(int row, int column, float x, float y, float w, float h) {
+            this.state = State.ALIVE;
+            this.row = row;
+            this.column = column;
+            this.bounds = new Rectangle((int) x, (int) y, (int) w, (int) h);
         }
     }
 }
