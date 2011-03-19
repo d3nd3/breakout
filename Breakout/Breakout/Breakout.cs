@@ -24,8 +24,8 @@ namespace Breakout {
             this.screenWidth = spriteBatch.GraphicsDevice.Viewport.Width;
             this.screenHeight = spriteBatch.GraphicsDevice.Viewport.Height;
             this.paddle = new Paddle(screenWidth, screenHeight);
-            this.ball = new Ball(paddle, screenWidth, screenHeight);
             this.wall = new Wall(screenWidth, screenHeight);
+            this.ball = new Ball(paddle, wall, screenWidth, screenHeight);
         }
 
         /// <summary>
@@ -77,6 +77,8 @@ namespace Breakout {
         // to detect hits and determine the new direction
         private Paddle paddle;
 
+        private Wall wall;
+
         // The screen width and height
         private int screenWidth, screenHeight;
 
@@ -86,6 +88,7 @@ namespace Breakout {
         // The starting position of the ball
         private Vector2 initialPosition;
 
+        private Vector2 lastPosition;
         // The current position of the ball
         private Vector2 position;
 
@@ -114,9 +117,10 @@ namespace Breakout {
         /// <param name="paddle">The Paddle which will hit the ball</param>
         /// <param name="screenWidth">Width of the screen for bounds checking.</param>
         /// <param name="screenHeight">Height of the screen for bounds checking.</param>
-        public Ball(Paddle paddle, int screenWidth, int screenHeight) {
+        public Ball(Paddle paddle, Wall wall, int screenWidth, int screenHeight) {
             this.state = State.Active;
             this.paddle = paddle;
+            this.wall = wall;
             this.screenWidth = screenWidth;
             this.screenHeight = screenHeight;
             initialPosition = new Vector2(screenWidth / 2, screenHeight / 2);
@@ -163,12 +167,14 @@ namespace Breakout {
         }
 
         private void UpdatePosition(GameTime gameTime) {
+            lastPosition = position;
             position = position + direction * (float)(speed * gameTime.ElapsedGameTime.TotalSeconds);
         }
 
         private void HandleCollisions() {
             HandleBoardCollisions();
             HandlePaddleCollision();
+            HandlWallCollision();
         }
 
         private void HandleBoardCollisions() {
@@ -199,6 +205,74 @@ namespace Breakout {
                 speed += speedIncrement;
                 speed = Math.Min(speed, maxSpeed);
             }
+        }
+
+        private void HandlWallCollision() {
+            Vector2 centerTop = new Vector2(Bounds.Width / 2, 0);
+            Vector2 centerLeft = new Vector2(0, Bounds.Height / 2);
+            Vector2 centerRight = new Vector2(Bounds.Width, Bounds.Height / 2);
+            Vector2 centerBottom = new Vector2(Bounds.Width / 2, Bounds.Height);
+            Vector2 newDirection = new Vector2(direction.X, direction.Y);
+            List<Rectangle> destroyed = wall.DestroyBricksAt(this.Bounds);
+
+            foreach (Rectangle brick in destroyed) {
+                bool changed = false;
+                Vector2 topLeft = new Vector2(brick.Left, brick.Top);
+                Vector2 topRight = new Vector2(brick.Right, brick.Top);
+                Vector2 bottomLeft = new Vector2(brick.Left, brick.Bottom);
+                Vector2 bottomRight = new Vector2(brick.Right, brick.Bottom);
+
+                if (direction.X > 0 && LineIntersects(lastPosition + centerRight, position + centerRight, topLeft, bottomLeft)) {
+                   newDirection.X *= -1;
+                   Console.WriteLine("left");
+                   changed = true;
+               } else if (direction.X < 0 && LineIntersects(lastPosition + centerLeft, position + centerLeft, topRight, bottomRight)) {
+                    newDirection.X *= -1;
+                    Console.WriteLine("right");
+                    changed = true;
+                }
+
+                if (direction.Y > 0 && LineIntersects(lastPosition + centerBottom, position + centerBottom, topLeft, topRight)) {
+                    newDirection.Y *= -1;
+                    Console.WriteLine("top");
+                    changed = true;
+                } else if (direction.Y < 0 && LineIntersects(lastPosition + centerTop, position + centerTop, bottomLeft, bottomRight)) {
+                    newDirection.Y *= -1;
+                    Console.WriteLine("bottom");
+                    changed = true;
+                }
+
+                // Hit a corner - bounce it back
+                if (!changed) {
+                    newDirection.X *= -1;
+                    newDirection.Y *= -1;
+                }
+
+
+                Console.WriteLine(direction);
+                Console.WriteLine(newDirection);
+                break;
+            }
+
+            direction = newDirection;
+        }
+
+        private bool LineIntersects(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4) {
+            float ua = (p4.X - p3.X) * (p1.Y - p3.Y) - (p4.Y - p4.Y) * (p1.X - p3.X);
+            float ub = (p2.X - p1.X) * (p1.Y - p3.Y) - (p2.Y - p1.Y) * (p1.X - p3.X);
+            float de = (p4.Y - p3.Y) * (p2.X - p1.X) - (p4.X - p3.X) * (p2.Y - p1.Y);
+            bool intersects = false;
+
+            if (Math.Abs(de) >= 0.00001f) {
+                ua /= de;
+                ub /= de;
+
+                if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
+                    intersects = true;
+                }
+            }
+
+            return intersects;
         }
 
         internal void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
@@ -334,7 +408,11 @@ namespace Breakout {
         private Rectangle wallBounds;
         private Texture2D sprite;
         private List<Brick> bricks = new List<Brick>();
-        
+
+        public Rectangle Bounds {
+            get { return wallBounds; }
+        }
+
         public Wall(int screenWidth, int screenHeight) {
             this.screenWidth = screenWidth;
             this.screenHeight = screenHeight;
@@ -367,17 +445,35 @@ namespace Breakout {
 
         internal void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
             foreach (Brick brick in bricks) {
-                spriteBatch.Draw(sprite, brick.Bounds, colors[colors.Length - brick.Row - 1]);
+                if (brick.State == Brick.BrickState.ALIVE) {
+                    spriteBatch.Draw(sprite, brick.Bounds, colors[colors.Length - brick.Row - 1]);
+                }
             }
+        }
+
+        internal List<Rectangle> DestroyBricksAt(Rectangle r) {
+            List<Rectangle> destroyedRectangles = new List<Rectangle>();
+
+            if (wallBounds.Intersects(r)) {
+                foreach (Brick brick in bricks) {
+                    if (brick.State == Brick.BrickState.ALIVE && brick.Bounds.Intersects(r)) {
+                        brick.State = Brick.BrickState.BROKEN;
+                        destroyedRectangles.Add(brick.Bounds);
+                        break;
+                    }
+                }
+            }
+
+            return destroyedRectangles;
         }
     }
 
     class Brick {
-        enum State { ALIVE, BROKEN };
+        public enum BrickState { ALIVE, BROKEN };
         private readonly int column;
         private readonly int row;
         private Rectangle bounds;
-        private State state;
+        private BrickState state;
 
         public int Row {
             get { return row; }
@@ -387,8 +483,10 @@ namespace Breakout {
             get { return bounds; }
         }
 
+        public BrickState State { get; set; }
+
         public Brick(int row, int column, float x, float y, float w, float h) {
-            this.state = State.ALIVE;
+            this.state = BrickState.ALIVE;
             this.row = row;
             this.column = column;
             this.bounds = new Rectangle((int) x, (int) y, (int) w, (int) h);
