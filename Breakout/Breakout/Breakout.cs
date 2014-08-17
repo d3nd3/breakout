@@ -258,7 +258,7 @@ namespace Breakout {
         }
 
         private bool LineIntersects(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4) {
-            float ua = (p4.X - p3.X) * (p1.Y - p3.Y) - (p4.Y - p4.Y) * (p1.X - p3.X);
+            float ua = (p4.X - p3.X) * (p1.Y - p3.Y) - (p4.Y - p3.Y) * (p1.X - p3.X);
             float ub = (p2.X - p1.X) * (p1.Y - p3.Y) - (p2.Y - p1.Y) * (p1.X - p3.X);
             float de = (p4.Y - p3.Y) * (p2.X - p1.X) - (p4.X - p3.X) * (p2.Y - p1.Y);
             bool intersects = false;
